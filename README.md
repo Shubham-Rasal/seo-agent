@@ -1,10 +1,10 @@
 # SEO Gap Analysis Agent
 
-**x402-based** SEO analysis API. Pay per request with USDC, poll for status, fetch the report. Built with Next.js, x402 payments, and Hyperbrowser.
+**x402-based** SEO analysis agent. Pay per request with USDC, poll for status, fetch the report. Built with Next.js, x402 payments, and Hyperbrowser.
 
 ## Features
 
-- **x402 API-first**: Payment-gated HTTP API. POST to start, poll status, GET report
+- **x402 agent-first**: Payment-gated HTTP agent. POST to start, poll status, GET report
 - **Autonomous Keyword Discovery**: AI identifies target keywords from your website content
 - **Competitor Analysis**: Automatically fetches and analyzes top 10 ranking pages
 - **Gap Identification**: Compares your site against competitors to find SEO opportunities
@@ -87,13 +87,13 @@ npm run build
 npm start
 ```
 
-## API Flow
+## Agent Flow
 
 1. **POST** `/api/workflows/seo-analysis` — Start analysis (x402 payment required). Returns `runId`.
 2. **GET** `/api/report/{runId}/status` — Poll for progress. When `status` is `"completed"`, proceed.
 3. **GET** `/api/report/{runId}` — Fetch the full SEO report.
 
-See [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for full API reference and examples.
+See [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for full agent reference and examples.
 
 ## Project Structure
 
@@ -133,11 +133,11 @@ This project uses **x402 v2** packages:
 
 See `bug.md` for full migration details from v1 to v2.
 
-## ERC-8004 Agent API
+## ERC-8004 Agent
 
 **Production**: https://seo-agent-phi.vercel.app
 
-This agent is **ERC-8004 compatible** and exposes a payment-gated API for other agents:
+This agent is **ERC-8004 compatible** and exposes a payment-gated interface for other agents:
 
 - **Agent Card**: [/.well-known/agent-card.json](https://seo-agent-phi.vercel.app/.well-known/agent-card.json) or `/api/agent-card`
 - **Payment**: x402 ($0.001 USDC on Base Sepolia)

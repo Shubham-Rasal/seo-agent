@@ -256,17 +256,17 @@ export default function Home() {
         <section className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6" style={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}>
             <Terminal className="w-4 h-4" style={{ color: '#888888' }} />
-            <span className="text-sm font-medium" style={{ color: '#CCCCCC' }}>x402 Payment-Gated API</span>
+            <span className="text-sm font-medium" style={{ color: '#CCCCCC' }}>x402 Payment-Gated Agent</span>
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold mb-4" style={{ color: '#FFFFFF' }}>
             SEO Gap Analysis
             <br />
-            <span style={{ color: '#888888' }}>API</span>
+            <span style={{ color: '#888888' }}>Agent</span>
           </h1>
 
           <p className="text-lg md:text-xl max-w-2xl mx-auto mb-6" style={{ color: '#CCCCCC' }}>
-            AI-powered SEO analysis via HTTP. Pay $0.001 USDC per request with x402. Poll for status, fetch the report.
+            AI-powered SEO analysis agent. Pay $0.001 USDC per request with x402. Poll for status, fetch the report.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3 text-sm">
@@ -291,11 +291,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* API Reference */}
+        {/* Agent Endpoints */}
         <section className="mb-16">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: '#FFFFFF' }}>
             <Terminal className="w-6 h-6" />
-            API Endpoints
+            Agent Endpoints
           </h2>
 
           <div className="space-y-10">
@@ -344,7 +344,7 @@ export default function Home() {
                     Endpoint
                   </span>
                   <CodeBlock copyable>
-                    {baseUrl || 'https://your-domain.com'}{ep.path}
+                    {`${baseUrl || 'https://your-domain.com'}${ep.path}`}
                   </CodeBlock>
                 </div>
 

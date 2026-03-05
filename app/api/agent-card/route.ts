@@ -24,7 +24,7 @@ export async function GET() {
 
     services: [
       {
-        name: 'api',
+        name: 'agent',
         version: '1.0.0',
         endpoint: `${baseUrl}/api/workflows/seo-analysis`,
         description: 'Run SEO gap analysis. POST with { url, userId, targetKeyword }. Returns runId. Poll /api/report/{runId}/status for progress.',

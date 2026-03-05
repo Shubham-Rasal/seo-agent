@@ -1,8 +1,8 @@
 # ERC-8004 Agent Integration Guide
 
-This SEO Gap Analysis Agent is **x402-based** and exposes a payment-gated API. Other agents and clients discover, pay, and consume the service programmatically.
+This SEO Gap Analysis Agent is **x402-based** and exposes a payment-gated interface. Other agents and clients discover, pay, and consume the service programmatically.
 
-## API Flow (3 Steps)
+## Agent Flow (3 Steps)
 
 | Step | Endpoint | Purpose |
 |------|----------|---------|
@@ -22,7 +22,7 @@ This SEO Gap Analysis Agent is **x402-based** and exposes a payment-gated API. O
 curl https://seo-agent-phi.vercel.app/.well-known/agent-card.json
 ```
 
-- **services** – API endpoints, payment requirements, request/response schemas
+- **services** – Agent endpoints, payment requirements, request/response schemas
 - **x402Support: true** – Payment via HTTP 402 + USDC
 - **agentWallet** – Receiving wallet (CAIP format: `eip155:84532:0x...`)
 
@@ -102,7 +102,7 @@ EVM_PRIVATE_KEY=0x... node pay-seo.mjs
 
 ---
 
-## API Reference
+## Agent Reference
 
 ### 1. Start Analysis (x402 payment required)
 

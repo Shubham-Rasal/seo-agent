@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LogIn, FileText, Github } from 'lucide-react';
+import { Home, LogIn, FileText } from 'lucide-react';
 import { ReactNode, useState, useEffect } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { useIsSignedIn, useCurrentUser } from '@coinbase/cdp-hooks';
@@ -89,16 +89,6 @@ export function NavDock({ rightContent }: NavDockProps = {}) {
                       </Link>
                     );
                   })}
-                  {/* GitHub Link */}
-                  <a
-                    href="https://github.com/Must-be-Ash/seo-agent"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`relative z-10 inline-flex items-center justify-center gap-1.5 ${linkClass} rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/50 transition-all`}
-                  >
-                    <Github className={`${iconClass} transition-all duration-200`} />
-                    <span className="hidden sm:inline">Fork</span>
-                  </a>
                   {/* Wallet / Sign In */}
                   {isSignedIn ? (
                     <NavWalletButton
