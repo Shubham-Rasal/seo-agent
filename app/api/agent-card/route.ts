@@ -9,8 +9,8 @@ import { COST_CONFIG } from '@/lib/config';
 export async function GET(request: Request) {
   // Vercel: use VERCEL_URL for correct production URLs (request.url can be internal)
   // Local: use request origin or NEXT_PUBLIC_URL
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
+  const baseUrl = process.env.NEXT_PUBLIC_URL
+    ? `https://${process.env.NEXT_PUBLIC_URL}`
     : new URL(request.url).origin;
   const receivingWallet = process.env.USDC_RECEIVING_WALLET_ADDRESS;
   const agentId = process.env.ERC8004_AGENT_ID;
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     name: 'SEO Gap Analysis Agent',
     description:
       'AI-powered SEO analysis agent. Compares your site against top competitors for a target keyword, identifies gaps, and generates actionable recommendations. Payment-gated via x402 (USDC on Base Sepolia).',
-    image: `${baseUrl}/logo.svg`,
+    image: `${baseUrl}/logo.png`,
     active: true,
     x402Support: true,
     healthUrl: `${baseUrl}/api/health`,
