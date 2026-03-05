@@ -6,8 +6,12 @@ import { COST_CONFIG } from '@/lib/config';
  * Served at /.well-known/agent-card.json for agent discovery
  * See: https://best-practices.8004scan.io/docs/01-agent-metadata-standard
  */
-export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://seo-agent-phi.vercel.app';
+export async function GET(request: Request) {
+  // Vercel: use VERCEL_URL for correct production URLs (request.url can be internal)
+  // Local: use request origin or NEXT_PUBLIC_URL
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : new URL(request.url).origin;
   const receivingWallet = process.env.USDC_RECEIVING_WALLET_ADDRESS;
   const agentId = process.env.ERC8004_AGENT_ID;
   const agentRegistry = process.env.ERC8004_AGENT_REGISTRY;
