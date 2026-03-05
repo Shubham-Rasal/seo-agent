@@ -4,10 +4,10 @@ import { useCurrentUser, useIsSignedIn } from '@coinbase/cdp-hooks';
 import { Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPublicClient, http, formatUnits } from 'viem';
-import { base } from 'viem/chains';
+import { baseSepolia } from 'viem/chains';
 import { WalletDropdown } from './WalletDropdown';
 
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const USDC_BASE_SEPOLIA = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 const USDC_DECIMALS = 6;
 
 interface NavWalletButtonProps {
@@ -32,12 +32,12 @@ export function NavWalletButton({ className, iconClassName }: NavWalletButtonPro
 
     try {
       const client = createPublicClient({
-        chain: base,
+        chain: baseSepolia,
         transport: http(),
       });
 
       const balanceResult = await client.readContract({
-        address: USDC_ADDRESS,
+        address: USDC_BASE_SEPOLIA,
         abi: [
           {
             name: 'balanceOf',

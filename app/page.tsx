@@ -7,9 +7,9 @@ import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { useIsSignedIn } from '@coinbase/cdp-hooks';
 import { getCurrentUser, toViemAccount } from '@coinbase/cdp-core';
 import { wrapFetchWithPayment, x402Client } from '@x402/fetch';
-import { ExactEvmScheme } from '@x402/evm';
-import { createWalletClient, http, publicActions } from 'viem';
-import { base } from 'viem/chains';
+import { ExactEvmScheme, toClientEvmSigner } from '@x402/evm';
+import { createPublicClient, http } from 'viem';
+import { baseSepolia } from 'viem/chains';
 import { COST_CONFIG } from '@/lib/config';
 import { validateUrl, normalizeUrl } from '@/lib/validation';
 import { AsciiBackground } from '@/components/AsciiBackground';
@@ -45,30 +45,16 @@ export default function Home() {
         console.log('[Setup] Smart Wallet found:', user.evmSmartAccounts[0]);
 
         const viemAccount = await toViemAccount(user.evmSmartAccounts[0]);
+        const publicClient = createPublicClient({
+          chain: baseSepolia,
+          transport: http('https://sepolia.base.org'),
+        });
+        const signer = toClientEvmSigner(viemAccount, publicClient);
 
-        const walletClient = createWalletClient({
-          account: viemAccount,
-          chain: base,
-          transport: http('https://mainnet.base.org'),
-        }).extend(publicActions);
-
-        console.log('[Setup] Setting up x402 v2 client for Base network (eip155:8453)');
-
-        const signer = {
-          address: viemAccount.address,
-          signTypedData: async (message: any) => {
-            return await walletClient.signTypedData({
-              account: viemAccount,
-              domain: message.domain,
-              types: message.types,
-              primaryType: message.primaryType,
-              message: message.message,
-            });
-          },
-        };
+        console.log('[Setup] Setting up x402 v2 client for Base Sepolia (eip155:84532)');
 
         const client = new x402Client()
-          .register('eip155:8453', new ExactEvmScheme(signer));
+          .register('eip155:84532', new ExactEvmScheme(signer));
 
         const wrapped = wrapFetchWithPayment(fetch, client);
 
@@ -145,16 +131,16 @@ export default function Home() {
         try {
           const data = await response.json();
           if (data.invalidReason === 'insufficient_funds') {
-            throw new Error(`Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base network. Please add funds and try again.`);
+            throw new Error(`Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia. Please add funds and try again.`);
           } else {
-            throw new Error(`Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base network.`);
+            throw new Error(`Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base Sepolia.`);
           }
         } catch (parseError) {
           // If we can't parse the response, show generic payment error
           if (parseError instanceof Error && parseError.message.includes('USDC')) {
             throw parseError; // Re-throw our custom error
           }
-          throw new Error(`Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base network.`);
+          throw new Error(`Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base Sepolia.`);
         }
       }
 
@@ -174,11 +160,11 @@ export default function Home() {
       let errorMessage = 'An unknown error occurred';
       if (error instanceof Error) {
         if (error.message.includes('402') || error.message.includes('Payment')) {
-          errorMessage = `Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base network.`;
+          errorMessage = `Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base Sepolia.`;
         } else if (error.message.includes('rejected')) {
           errorMessage = 'Payment was rejected by your wallet';
         } else if (error.message.includes('Insufficient funds')) {
-          errorMessage = `Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base.`;
+          errorMessage = `Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia.`;
         } else {
           errorMessage = error.message;
         }

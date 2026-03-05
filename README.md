@@ -140,6 +140,33 @@ This project uses **x402 v2** packages:
 
 See `bug.md` for full migration details from v1 to v2.
 
+## ERC-8004 Agent API
+
+**Production**: https://seo-agent-phi.vercel.app
+
+This agent is **ERC-8004 compatible** and exposes a payment-gated API for other agents:
+
+- **Agent Card**: [/.well-known/agent-card.json](https://seo-agent-phi.vercel.app/.well-known/agent-card.json) or `/api/agent-card`
+- **Payment**: x402 ($0.50 USDC on Base Sepolia)
+- **Flow**: POST → runId → poll status → fetch report
+
+See [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for the integration guide.
+
+### Filecoin Pin + On-Chain Registration
+
+One-command registration (requires filecoin-pin, cast, jq):
+
+```bash
+PRIVATE_KEY=0x... pnpm run register-agent
+# Or with payment setup (first time): PRIVATE_KEY=0x... ./scripts/register-erc8004-agent.sh --setup-payments
+```
+
+See [docs/FILECOIN_PIN_REGISTRATION.md](docs/FILECOIN_PIN_REGISTRATION.md) for details.
+
+Optional env vars (after registration):
+- `ERC8004_AGENT_ID` – Agent ID from registry
+- `ERC8004_AGENT_REGISTRY` – e.g. `eip155:84532:0x8004A818BFB912233c491871b3d84c89A494BD9e`
+
 ## Resources
 
 - [x402 Protocol Docs](https://x402.gitbook.io/x402)
@@ -147,6 +174,7 @@ See `bug.md` for full migration details from v1 to v2.
 - [Vercel Workflow Kit](https://vercel.com/docs/workflow)
 - [Coinbase CDP Docs](https://docs.cdp.coinbase.com/)
 - [CDP API Keys](https://portal.cdp.coinbase.com/)
+- [ERC-8004 Best Practices](https://best-practices.8004scan.io/)
 
 ## License
 

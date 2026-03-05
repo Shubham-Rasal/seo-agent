@@ -3,7 +3,10 @@ import { searchWeb, fetchPageData, fetchMultiplePages } from '@/lib/hyperbrowser
 import { SEO_EXTRACTION_SCHEMA, type SEOData } from '@/lib/schemas';
 import { x402Client, wrapFetchWithPayment } from '@x402/fetch';
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
+import { toClientEvmSigner } from '@x402/evm';
 import { privateKeyToAccount } from 'viem/accounts';
+import { createPublicClient, http } from 'viem';
+import { base } from 'viem/chains';
 import OpenAI from 'openai';
 import type { StructuredReportData } from '@/types/report-data';
 import { safeParse } from '@/lib/safe-json';
@@ -16,7 +19,19 @@ const openai = new OpenAI({
 // Helper to create x402-enabled fetch function for server-side payments to Hyperbrowser
 function createX402Fetch(): typeof fetch {
   // For server-side, use a backend wallet (v2 client API)
-  const signer = privateKeyToAccount(process.env.X402_WALLET_PRIVATE_KEY as `0x${string}`);
+  const privateKey = process.env.X402_WALLET_PRIVATE_KEY;
+  if (!privateKey) {
+    throw new Error(
+      'X402_WALLET_PRIVATE_KEY is not set. Add it to .env - this wallet pays Hyperbrowser for search/fetch. ' +
+      'It needs USDC on Base mainnet.'
+    );
+  }
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(),
+  });
+  const signer = toClientEvmSigner(account, publicClient);
 
   // Create x402 client and register EVM scheme
   const client = new x402Client();

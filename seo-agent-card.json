@@ -1,0 +1,43 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "SEO Gap Analysis Agent",
+  "description": "AI-powered SEO analysis agent. Compares your site against top competitors for a target keyword, identifies gaps, and generates actionable recommendations. Payment-gated via x402 (USDC on Base Sepolia).",
+  "image": "https://seo-agent-phi.vercel.app/logo.png",
+  "active": true,
+  "x402Support": true,
+  "services": [
+    {
+      "name": "api",
+      "version": "1.0.0",
+      "endpoint": "https://seo-agent-phi.vercel.app/api/workflows/seo-analysis",
+      "description": "Run SEO gap analysis. POST with { url, userId, targetKeyword }. Returns runId. Poll /api/report/{runId}/status for progress. Payment required via x402 ($0.50 USDC).",
+      "protocol": "http",
+      "payment": {
+        "required": true,
+        "protocol": "x402",
+        "network": "eip155:84532",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "amount": "0.5",
+        "currency": "USDC"
+      }
+    },
+    {
+      "name": "status",
+      "version": "1.0.0",
+      "endpoint": "https://seo-agent-phi.vercel.app/api/report/{runId}/status",
+      "description": "Poll workflow progress. GET returns { status, progress, completedSteps }."
+    },
+    {
+      "name": "report",
+      "version": "1.0.0",
+      "endpoint": "https://seo-agent-phi.vercel.app/api/report/{runId}",
+      "description": "Fetch completed report. GET returns full report data when status is completed."
+    },
+    {
+      "name": "agentWallet",
+      "endpoint": "eip155:84532:0x0A7c56744ed6fd786931E11E40F462CF213654b0"
+    }
+  ],
+  "registrations": [],
+  "supportedTrust": ["reputation", "crypto-economic"]
+}

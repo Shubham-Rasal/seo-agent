@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     const paymentRequirements = createPaymentRequirements(
       `$${COST_CONFIG.seoAnalysis}`,  // Price in USDC
-      'base',                          // Base mainnet
+      'base-sepolia', // Network
       requestUrl,                      // Resource URL
       'SEO Gap Analysis with AI-powered insights'
     );
