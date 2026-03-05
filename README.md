@@ -1,19 +1,19 @@
 # SEO Gap Analysis Agent
 
-AI-powered SEO analysis tool that discovers keywords, analyzes competitors, and generates actionable recommendations. Built with Next.js, x402 payments, and Hyperbrowser.
+**x402-based** SEO analysis API. Pay per request with USDC, poll for status, fetch the report. Built with Next.js, x402 payments, and Hyperbrowser.
 
 ## Features
 
+- **x402 API-first**: Payment-gated HTTP API. POST to start, poll status, GET report
 - **Autonomous Keyword Discovery**: AI identifies target keywords from your website content
 - **Competitor Analysis**: Automatically fetches and analyzes top 10 ranking pages
 - **Gap Identification**: Compares your site against competitors to find SEO opportunities
-- **Actionable Reports**: Generates comprehensive HTML reports with prioritized recommendations
-- **x402 Payments**: Pay-per-use model with USDC on Base network
+- **Actionable Reports**: Comprehensive HTML reports with prioritized recommendations
 
 ## Payment Architecture
 
 ### User → SEO Agent (Base Only)
-Users pay **$0.50 USDC on Base mainnet** to generate an SEO report.
+Users pay **$0.001 USDC on Base mainnet** to generate an SEO report.
 
 **Accepted Payment:**
 - Network: `eip155:8453` (Base mainnet)
@@ -87,20 +87,13 @@ npm run build
 npm start
 ```
 
-## How It Works
+## API Flow
 
-1. **User submits URL**: Enter a website URL to analyze
-2. **Payment**: User pays $0.50 USDC on Base via embedded wallet
-3. **Workflow starts**: Vercel Workflow Kit executes 8-step analysis:
-   - Fetch user's site (via Hyperbrowser)
-   - Discover keywords (via OpenAI)
-   - Search for competitors (via Hyperbrowser)
-   - Fetch competitor data (via Hyperbrowser)
-   - Analyze patterns (via OpenAI)
-   - Identify gaps (via OpenAI)
-   - Generate recommendations (via OpenAI)
-   - Create HTML report (via OpenAI)
-4. **Report ready**: View comprehensive SEO analysis with actionable insights
+1. **POST** `/api/workflows/seo-analysis` — Start analysis (x402 payment required). Returns `runId`.
+2. **GET** `/api/report/{runId}/status` — Poll for progress. When `status` is `"completed"`, proceed.
+3. **GET** `/api/report/{runId}` — Fetch the full SEO report.
+
+See [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for full API reference and examples.
 
 ## Project Structure
 
@@ -147,7 +140,7 @@ See `bug.md` for full migration details from v1 to v2.
 This agent is **ERC-8004 compatible** and exposes a payment-gated API for other agents:
 
 - **Agent Card**: [/.well-known/agent-card.json](https://seo-agent-phi.vercel.app/.well-known/agent-card.json) or `/api/agent-card`
-- **Payment**: x402 ($0.50 USDC on Base Sepolia)
+- **Payment**: x402 ($0.001 USDC on Base Sepolia)
 - **Flow**: POST → runId → poll status → fetch report
 
 See [docs/AGENT_INTEGRATION.md](docs/AGENT_INTEGRATION.md) for the integration guide.

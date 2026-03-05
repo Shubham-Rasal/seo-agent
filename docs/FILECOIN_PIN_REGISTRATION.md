@@ -94,6 +94,6 @@ ERC8004_AGENT_REGISTRY=eip155:84532:0x8004A818BFB912233c491871b3d84c89A494BD9e
 | Base URL | https://seo-agent-phi.vercel.app |
 | Agent Card (HTTP) | https://seo-agent-phi.vercel.app/.well-known/agent-card.json |
 | API Endpoint | https://seo-agent-phi.vercel.app/api/workflows/seo-analysis |
-| Payment | x402, $0.50 USDC, Base Sepolia |
+| Payment | x402, $0.001 USDC, Base Sepolia |
 | Registry (Base Sepolia) | 0x8004A818BFB912233c491871b3d84c89A494BD9e |
 | Registry (Base Mainnet) | 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 |

@@ -1,25 +1,32 @@
 # ERC-8004 Agent Integration Guide
 
-This SEO Gap Analysis Agent is ERC-8004 compatible and exposes a payment-gated API via x402. Other agents can discover, pay, and consume the service programmatically.
+This SEO Gap Analysis Agent is **x402-based** and exposes a payment-gated API. Other agents and clients discover, pay, and consume the service programmatically.
+
+## API Flow (3 Steps)
+
+| Step | Endpoint | Purpose |
+|------|----------|---------|
+| 1 | `POST /api/workflows/seo-analysis` | Start analysis (x402 payment required). Returns `runId`. |
+| 2 | `GET /api/report/{runId}/status` | Poll for progress. When `status` is `"completed"`, proceed. |
+| 3 | `GET /api/report/{runId}` | Fetch the full SEO report. |
+
+**Base URL:** `https://seo-agent-phi.vercel.app` (or your deployment)
+
+---
 
 ## Discovery
 
 ### Agent Card (ERC-8004 Metadata)
 
-Fetch the agent metadata from either URL:
-
-- `/.well-known/agent-card.json` (standard path)
-- `/api/agent-card`
-
 ```bash
 curl https://seo-agent-phi.vercel.app/.well-known/agent-card.json
 ```
 
-The response includes:
-
 - **services** – API endpoints, payment requirements, request/response schemas
 - **x402Support: true** – Payment via HTTP 402 + USDC
 - **agentWallet** – Receiving wallet (CAIP format: `eip155:84532:0x...`)
+
+---
 
 ## Payment Flow (x402)
 
@@ -28,9 +35,74 @@ The response includes:
 3. **Sign** EIP-3009 transfer authorization with your wallet
 4. **Retry** with `PAYMENT-SIGNATURE` header → **200 OK** + `runId`
 
-Use the [@x402/fetch](https://www.npmjs.com/package/@x402/fetch) or [@x402/evm](https://www.npmjs.com/package/@x402/evm) packages for automatic payment handling.
+Use [@x402/fetch](https://www.npmjs.com/package/@x402/fetch) or [@x402/evm](https://www.npmjs.com/package/@x402/evm) for automatic payment handling.
 
-## API Usage
+---
+
+## Pay from Terminal
+
+### Option 1: purl (curl + payments)
+
+[purl](https://purl.dev/) is a curl-like CLI that handles x402 payments automatically.
+
+```bash
+# Install (macOS)
+brew install stripe/purl/purl
+
+# Or via shell script
+curl -fsSL https://www.purl.dev/install.sh | bash
+
+# Add your wallet (private key for Base Sepolia)
+purl wallet add
+
+# Make the paid request (payment handled automatically)
+purl -X POST "http://localhost:3001/api/workflows/seo-analysis" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","userId":"0xYourWalletAddress","targetKeyword":"web design agency"}'
+```
+
+### Option 2: Node.js script with @x402/fetch
+
+```bash
+npm install @x402/fetch @x402/evm viem
+```
+
+```javascript
+// pay-seo.mjs
+import { wrapFetchWithPayment, x402Client } from '@x402/fetch';
+import { ExactEvmScheme, toClientEvmSigner } from '@x402/evm';
+import { privateKeyToAccount } from 'viem/accounts';
+import { createPublicClient, http } from 'viem';
+import { baseSepolia } from 'viem/chains';
+
+const pk = process.env.EVM_PRIVATE_KEY; // 0x...
+if (!pk) throw new Error('Set EVM_PRIVATE_KEY');
+const account = privateKeyToAccount(pk);
+const client = createPublicClient({ chain: baseSepolia, transport: http() });
+const signer = toClientEvmSigner(account, client);
+
+const x402 = new x402Client().register('eip155:84532', new ExactEvmScheme(signer));
+const fetchWithPayment = wrapFetchWithPayment(fetch, x402);
+
+const res = await fetchWithPayment('http://localhost:3001/api/workflows/seo-analysis', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    url: 'https://example.com',
+    userId: account.address,
+    targetKeyword: 'web design agency',
+  }),
+});
+console.log(await res.json());
+```
+
+```bash
+EVM_PRIVATE_KEY=0x... node pay-seo.mjs
+```
+
+---
+
+## API Reference
 
 ### 1. Start Analysis (x402 payment required)
 
@@ -55,7 +127,9 @@ Content-Type: application/json
 }
 ```
 
-### 2. Poll Status
+Save `runId` for status and report endpoints.
+
+### 2. Check Result Status (poll until completed)
 
 ```http
 GET /api/report/{runId}/status
@@ -71,12 +145,17 @@ GET /api/report/{runId}/status
     "userSiteData": true,
     "discoveredKeywords": true,
     "competitorData": false,
-    ...
+    "patterns": false,
+    "gaps": false,
+    "recommendations": false,
+    "reportHtml": false
   }
 }
 ```
 
-When `status` is `"completed"`, fetch the full report.
+- **status**: `"analyzing"` | `"completed"` | `"failed"`
+- **progress**: 0–100
+- Poll every 3–5 seconds. When `status` is `"completed"`, call the report endpoint.
 
 ### 3. Fetch Report
 
@@ -159,7 +238,7 @@ See [Filecoin ERC-8004 registration](https://docs.filecoin.io/builder-cookbook/f
 
 ## Pricing
 
-- **$0.50 USDC** per analysis (Base Sepolia)
+- **$0.001 USDC** per analysis (Base Sepolia)
 - Payment is settled on-chain via x402 facilitator
 
 ## Network

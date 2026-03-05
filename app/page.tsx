@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TextShimmer } from '@/components/ui/text-shimmer';
-import { ArrowRight, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Terminal, Copy, Check } from 'lucide-react';
 import { useIsSignedIn } from '@coinbase/cdp-hooks';
 import { getCurrentUser, toViemAccount } from '@coinbase/cdp-core';
 import { wrapFetchWithPayment, x402Client } from '@x402/fetch';
@@ -14,6 +13,103 @@ import { COST_CONFIG } from '@/lib/config';
 import { validateUrl, normalizeUrl } from '@/lib/validation';
 import { AsciiBackground } from '@/components/AsciiBackground';
 
+const RUN_ID_PLACEHOLDER = 'seo_1772369564721_6dji43bb4';
+
+const API_ENDPOINTS = [
+  {
+    step: 1,
+    title: 'Start Analysis',
+    method: 'POST',
+    path: '/api/workflows/seo-analysis',
+    description: 'Submit a URL and keyword. Requires x402 payment ($0.50 USDC on Base Sepolia). Returns runId for status polling.',
+    curl: (base: string) =>
+      `curl -X POST "${base}/api/workflows/seo-analysis" \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://example.com","userId":"0xYourWalletAddress","targetKeyword":"web design agency"}'`,
+    request: {
+      url: 'https://example.com',
+      userId: '0xYourWalletAddress',
+      targetKeyword: 'web design agency',
+    },
+    response: {
+      success: true,
+      runId: RUN_ID_PLACEHOLDER,
+      message: 'SEO analysis started',
+    },
+  },
+  {
+    step: 2,
+    title: 'Check Status',
+    method: 'GET',
+    path: '/api/report/{runId}/status',
+    description: 'Poll this endpoint to check workflow progress. When status is "completed", fetch the report.',
+    curl: (base: string) =>
+      `curl "${base}/api/report/${RUN_ID_PLACEHOLDER}/status"`,
+    response: {
+      status: 'analyzing',
+      progress: 45,
+      completedSteps: {
+        userSiteData: true,
+        discoveredKeywords: true,
+        competitorData: false,
+        patterns: false,
+        gaps: false,
+        recommendations: false,
+        reportHtml: false,
+      },
+    },
+  },
+  {
+    step: 3,
+    title: 'Fetch Report',
+    method: 'GET',
+    path: '/api/report/{runId}',
+    description: 'Retrieve the full SEO report when status is "completed".',
+    curl: (base: string) =>
+      `curl "${base}/api/report/${RUN_ID_PLACEHOLDER}"`,
+    response: {
+      runId: RUN_ID_PLACEHOLDER,
+      status: 'completed',
+      userUrl: 'https://example.com',
+      score: 72,
+      reportData: { /* ... */ },
+      createdAt: '2026-03-01T12:00:00.000Z',
+    },
+  },
+];
+
+function CodeBlock({ children, copyable = true }: { children: string; copyable?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+
+  const handleCopy = async () => {
+    if (!preRef.current) return;
+    await navigator.clipboard.writeText(preRef.current.textContent || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group">
+      <pre
+        ref={preRef}
+        className="overflow-x-auto rounded-lg p-4 text-sm font-mono"
+        style={{ backgroundColor: '#0d1117', color: '#e6edf3', border: '1px solid #30363d' }}
+      >
+        {children}
+      </pre>
+      {copyable && (
+        <button
+          onClick={handleCopy}
+          className="absolute top-2 right-2 p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: '#21262d', color: '#8b949e' }}
+        >
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -22,11 +118,14 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [paymentFetch, setPaymentFetch] = useState<typeof fetch | null>(null);
-  const authButtonRef = useRef<HTMLDivElement>(null);
+  const [baseUrl, setBaseUrl] = useState('');
   const router = useRouter();
   const { isSignedIn } = useIsSignedIn();
 
-  // Setup wrapped fetch with payment capability when user signs in
+  useEffect(() => {
+    setBaseUrl(typeof window !== 'undefined' ? window.location.origin : '');
+  }, []);
+
   useEffect(() => {
     async function setupPaymentFetch() {
       if (!isSignedIn) {
@@ -42,8 +141,6 @@ export default function Home() {
           return;
         }
 
-        console.log('[Setup] Smart Wallet found:', user.evmSmartAccounts[0]);
-
         const viemAccount = await toViemAccount(user.evmSmartAccounts[0]);
         const publicClient = createPublicClient({
           chain: baseSepolia,
@@ -51,15 +148,12 @@ export default function Home() {
         });
         const signer = toClientEvmSigner(viemAccount, publicClient);
 
-        console.log('[Setup] Setting up x402 v2 client for Base Sepolia (eip155:84532)');
-
         const client = new x402Client()
           .register('eip155:84532', new ExactEvmScheme(signer));
 
         const wrapped = wrapFetchWithPayment(fetch, client);
 
         setPaymentFetch(() => wrapped);
-        console.log('[Setup] ✓ x402 v2 payment fetch ready');
       } catch (error) {
         console.error('[Setup] Failed to create payment fetch:', error);
       }
@@ -100,17 +194,12 @@ export default function Home() {
     setLoading(true);
 
     try {
-      // Get wallet address
       const user = await getCurrentUser();
-      const walletAddress = user?.evmSmartAccounts?.[0] ?
-        (await toViemAccount(user.evmSmartAccounts[0])).address :
-        'unknown';
+      const walletAddress = user?.evmSmartAccounts?.[0]
+        ? (await toViemAccount(user.evmSmartAccounts[0])).address
+        : 'unknown';
 
-      // Normalize the URL (add https:// if missing)
       const normalizedUrl = normalizeUrl(url);
-
-      console.log('[SEO Analysis] Starting analysis for:', normalizedUrl);
-      console.log('[Payment] Using x402-wrapped fetch for payment handling');
 
       const response = await paymentFetch('/api/workflows/seo-analysis', {
         method: 'POST',
@@ -122,26 +211,18 @@ export default function Home() {
         }),
       });
 
-      console.log('[Workflow] Response status:', response.status);
-
       if (response.status === 402) {
-        console.warn('[Payment] Payment required (402)');
-
-        // Parse 402 response to check for insufficient funds
         try {
           const data = await response.json();
           if (data.invalidReason === 'insufficient_funds') {
-            throw new Error(`Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia. Please add funds and try again.`);
-          } else {
-            throw new Error(`Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base Sepolia.`);
+            throw new Error(`Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia.`);
           }
         } catch (parseError) {
-          // If we can't parse the response, show generic payment error
           if (parseError instanceof Error && parseError.message.includes('USDC')) {
-            throw parseError; // Re-throw our custom error
+            throw parseError;
           }
-          throw new Error(`Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base Sepolia.`);
         }
+        throw new Error(`Payment failed. Ensure you have $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia.`);
       }
 
       if (!response.ok) {
@@ -150,58 +231,185 @@ export default function Home() {
       }
 
       const { runId } = await response.json();
-      console.log('[Workflow] ✓ Analysis started:', runId);
-
       router.push(`/report/${runId}`);
-
     } catch (error) {
-      console.error('[Client] Failed to start analysis:', error);
-
       let errorMessage = 'An unknown error occurred';
       if (error instanceof Error) {
         if (error.message.includes('402') || error.message.includes('Payment')) {
-          errorMessage = `Payment failed. Please ensure you have sufficient USDC balance ($${COST_CONFIG.seoAnalysis}) on Base Sepolia.`;
+          errorMessage = `Payment failed. Ensure you have $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia.`;
         } else if (error.message.includes('rejected')) {
           errorMessage = 'Payment was rejected by your wallet';
-        } else if (error.message.includes('Insufficient funds')) {
-          errorMessage = `Insufficient USDC balance. You need at least $${COST_CONFIG.seoAnalysis} USDC on Base Sepolia.`;
         } else {
           errorMessage = error.message;
         }
       }
-
       setError(errorMessage);
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center" style={{ backgroundColor: '#212121', minHeight: '100vh', paddingBottom: '80px' }}>
+    <div className="flex flex-col" style={{ backgroundColor: '#212121', minHeight: '100vh', paddingBottom: '80px' }}>
       <AsciiBackground />
-      <main className="w-full">
-        {/* Hero Section */}
-        <section className="max-w-6xl mx-auto px-8 md:px-6 w-full pt-16 md:pt-0">
-          <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 md:mb-4" style={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}>
-              <Sparkles className="w-4 h-4" style={{ color: '#888888' }} />
-              <span className="text-sm font-medium" style={{ color: '#CCCCCC' }}>AI-Powered SEO Analysis</span>
-            </div>
-
-            <h1 className="text-4xl md:text-7xl font-bold mb-3 md:mb-4 leading-tight px-2" style={{ color: '#FFFFFF' }}>
-              Find Your SEO
-              <br />
-              <span style={{ color: '#888888' }}>Gaps in Minutes</span>
-            </h1>
-
-            <p className="text-sm md:text-2xl mb-6 md:mb-3 max-w-2xl mx-auto leading-relaxed px-4 md:px-0" style={{ color: '#CCCCCC' }}>
-              Compare your site against top competitors and get actionable insights to improve your search rankings
-            </p>
+      <main className="w-full max-w-4xl mx-auto px-6 md:px-8 pt-12 md:pt-16">
+        {/* Hero */}
+        <section className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6" style={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}>
+            <Terminal className="w-4 h-4" style={{ color: '#888888' }} />
+            <span className="text-sm font-medium" style={{ color: '#CCCCCC' }}>x402 Payment-Gated API</span>
           </div>
 
-          {/* Main CTA Form */}
-          <div className="max-w-2xl mx-auto px-4 md:px-0">
-            <form onSubmit={handleSubmit} className="space-y-2">
-              <div className="relative">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4" style={{ color: '#FFFFFF' }}>
+            SEO Gap Analysis
+            <br />
+            <span style={{ color: '#888888' }}>API</span>
+          </h1>
+
+          <p className="text-lg md:text-xl max-w-2xl mx-auto mb-6" style={{ color: '#CCCCCC' }}>
+            AI-powered SEO analysis via HTTP. Pay $0.001 USDC per request with x402. Poll for status, fetch the report.
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-3 text-sm">
+            <a
+              href="/.well-known/agent-card.json"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg"
+              style={{ backgroundColor: '#2A2A2A', color: '#CCCCCC', border: '1px solid #3A3A3A' }}
+            >
+              Agent Card
+            </a>
+            <a
+              href="/api/health"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg"
+              style={{ backgroundColor: '#2A2A2A', color: '#CCCCCC', border: '1px solid #3A3A3A' }}
+            >
+              Health Check
+            </a>
+          </div>
+        </section>
+
+        {/* API Reference */}
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: '#FFFFFF' }}>
+            <Terminal className="w-6 h-6" />
+            API Endpoints
+          </h2>
+
+          <div className="space-y-10">
+            {API_ENDPOINTS.map((ep) => (
+              <div
+                key={ep.step}
+                className="rounded-xl p-6"
+                style={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <span
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                    style={{ backgroundColor: '#333', color: '#fff' }}
+                  >
+                    {ep.step}
+                  </span>
+                  <h3 className="text-lg font-semibold" style={{ color: '#FFFFFF' }}>
+                    {ep.title}
+                  </h3>
+                  <span
+                    className="px-2 py-0.5 rounded text-xs font-mono"
+                    style={{
+                      backgroundColor: ep.method === 'POST' ? '#238636' : '#1f6feb',
+                      color: '#fff',
+                    }}
+                  >
+                    {ep.method}
+                  </span>
+                </div>
+
+                <p className="text-sm mb-4" style={{ color: '#8b949e' }}>
+                  {ep.description}
+                </p>
+
+                <div className="mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#6e7681' }}>
+                    curl
+                  </span>
+                  <CodeBlock copyable>
+                    {ep.curl(baseUrl || 'https://your-domain.com')}
+                  </CodeBlock>
+                </div>
+
+                <div className="mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#6e7681' }}>
+                    Endpoint
+                  </span>
+                  <CodeBlock copyable>
+                    {baseUrl || 'https://your-domain.com'}{ep.path}
+                  </CodeBlock>
+                </div>
+
+                {ep.request && (
+                  <div className="mb-3">
+                    <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#6e7681' }}>
+                      Request body (Step 1 only)
+                    </span>
+                    <CodeBlock copyable>
+                      {JSON.stringify(ep.request, null, 2)}
+                    </CodeBlock>
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#6e7681' }}>
+                    Response
+                  </span>
+                  <CodeBlock copyable>
+                    {JSON.stringify(ep.response, null, 2)}
+                  </CodeBlock>
+                </div>
+
+                {ep.step === 1 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs" style={{ color: '#6e7681' }}>
+                      First request returns <strong>402 Payment Required</strong>. Use <strong>purl</strong> (curl + payments) for automatic handling:
+                    </p>
+                    <CodeBlock copyable>
+                      {`# Install: brew install stripe/purl/purl
+# Add wallet: purl wallet add
+purl -X POST "${baseUrl || 'http://localhost:3000'}/api/workflows/seo-analysis" \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://example.com","userId":"0xYourWallet","targetKeyword":"web design"}'`}
+                    </CodeBlock>
+                  </div>
+                )}
+
+                {ep.step === 2 && (
+                  <p className="mt-3 text-xs" style={{ color: '#6e7681' }}>
+                    Poll every 3–5 seconds. When <code className="px-1 rounded" style={{ backgroundColor: '#2d2d2d' }}>status</code> is <code className="px-1 rounded" style={{ backgroundColor: '#2d2d2d' }}>&quot;completed&quot;</code>, call the report endpoint.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Try it */}
+        <section>
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: '#FFFFFF' }}>
+            <Sparkles className="w-6 h-6" />
+            Try it
+          </h2>
+
+          <div
+            className="rounded-xl p-6"
+            style={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A' }}
+          >
+            <p className="text-sm mb-4" style={{ color: '#8b949e' }}>
+              Run an analysis from the browser. Sign in and pay with USDC on Base Sepolia.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
                 <input
                   type="text"
                   value={url}
@@ -213,16 +421,16 @@ export default function Home() {
                   onBlur={() => setFocused(false)}
                   placeholder="example.com"
                   disabled={loading}
-                  className="w-full px-4 md:px-6 py-4 md:py-5 text-base md:text-lg rounded-xl border-2 transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 rounded-lg border-2 transition-all focus:outline-none disabled:opacity-50"
                   style={{
-                    backgroundColor: '#1A1A1A',
-                    borderColor: focused ? '#444444' : (error ? '#EF4444' : '#2A2A2A'),
-                    color: '#FFFFFF',
+                    backgroundColor: '#0d1117',
+                    borderColor: focused ? '#444' : error ? '#ef4444' : '#2A2A2A',
+                    color: '#fff',
                   }}
                 />
               </div>
 
-              <div className="relative">
+              <div>
                 <input
                   type="text"
                   value={keyword}
@@ -232,54 +440,38 @@ export default function Home() {
                   }}
                   placeholder="Target keyword (e.g., graphic design)"
                   disabled={loading}
-                  className="w-full px-4 md:px-6 py-4 md:py-5 text-base md:text-lg rounded-xl border-2 transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 rounded-lg border-2 transition-all focus:outline-none disabled:opacity-50"
                   style={{
-                    backgroundColor: '#1A1A1A',
+                    backgroundColor: '#0d1117',
                     borderColor: '#2A2A2A',
-                    color: '#FFFFFF',
+                    color: '#fff',
                   }}
                 />
               </div>
 
               {error && (
-                <p className="text-sm flex items-center gap-2 px-2" style={{ color: '#EF4444' }}>
-                  {error}
-                </p>
+                <p className="text-sm" style={{ color: '#ef4444' }}>{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={loading || !url.trim() || !keyword.trim()}
-                className="w-full py-4 md:py-5 px-6 rounded-xl font-semibold text-base md:text-lg transition-all flex items-center justify-center gap-3 group disabled:cursor-not-allowed relative overflow-hidden mt-6 md:mt-8"
+                className="w-full py-3 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  backgroundColor: (loading || !url.trim() || !keyword.trim()) ? '#CCCCCC' : '#FFFFFF',
-                  color: '#000000',
-                }}
-                onMouseEnter={(e) => {
-                  if (!loading && url.trim() && keyword.trim()) {
-                    e.currentTarget.style.backgroundColor = '#F5F5F5';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!loading && url.trim() && keyword.trim()) {
-                    e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  }
+                  backgroundColor: loading || !url.trim() || !keyword.trim() ? '#444' : '#fff',
+                  color: '#000',
                 }}
               >
-                {loading ? (
-                  <span className="text-base md:text-lg font-semibold" style={{ color: '#000000' }}>
-                    Analyzing your site...
-                  </span>
-                ) : (
+                {loading ? 'Starting...' : (
                   <>
-                    <span>Start Analysis</span>
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    Start Analysis
+                    <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </button>
 
-              <p className="text-center text-xs md:text-sm px-2" style={{ color: '#999999' }}>
-                Powered by Hyperbrowser • ${COST_CONFIG.seoAnalysis} USDC per report
+              <p className="text-center text-xs" style={{ color: '#6e7681' }}>
+                ${COST_CONFIG.seoAnalysis} USDC per report • Base Sepolia
               </p>
             </form>
           </div>
