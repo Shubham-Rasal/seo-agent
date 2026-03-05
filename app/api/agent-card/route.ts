@@ -7,10 +7,13 @@ import { COST_CONFIG } from '@/lib/config';
  * See: https://best-practices.8004scan.io/docs/01-agent-metadata-standard
  */
 export async function GET(request: Request) {
-  // Vercel: use VERCEL_URL for correct production URLs (request.url can be internal)
-  // Local: use request origin or NEXT_PUBLIC_URL
-  const baseUrl = process.env.NEXT_PUBLIC_URL
-    ? `https://${process.env.NEXT_PUBLIC_URL}`
+  // Use stable production URL — avoid temporary Vercel preview URLs (project-xyz.vercel.app)
+  // Set NEXT_PUBLIC_URL or AGENT_BASE_URL in Vercel env to your production domain (e.g. https://seo-agent-phi.vercel.app)
+  const explicit = process.env.NEXT_PUBLIC_URL || process.env.AGENT_BASE_URL;
+  const explicitUrl = explicit?.startsWith("http") ? explicit : explicit ? `https://${explicit}` : null;
+  const baseUrl =
+    (explicitUrl && !explicitUrl.includes("localhost")) ? explicitUrl.replace(/\/$/, "")
+    : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}`
     : new URL(request.url).origin;
   const receivingWallet = process.env.USDC_RECEIVING_WALLET_ADDRESS;
   const agentId = process.env.ERC8004_AGENT_ID;

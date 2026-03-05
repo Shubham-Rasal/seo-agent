@@ -59,6 +59,9 @@ USDC_RECEIVING_WALLET_ADDRESS=0x...  # Your wallet to receive user payments
 FACILITATOR_URL=https://x402.org/facilitator
 NEXT_PUBLIC_NETWORK=base
 USDC_CONTRACT_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+
+# Stable agent URL (required for production) — use your production domain, NOT temporary Vercel preview URLs
+NEXT_PUBLIC_URL=https://seo-agent-phi.vercel.app  # or your custom domain
 ```
 
 ## Getting Started
